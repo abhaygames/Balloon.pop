@@ -6,108 +6,67 @@
 <title>Magic Path</title>
 
 <style>
-*{
-  box-sizing:border-box;
-}
-
 body{
   margin:0;
   font-family:Arial,sans-serif;
-  background:linear-gradient(135deg,#10152f,#253b70);
+  background:linear-gradient(135deg,#172554,#4c1d95);
   color:white;
   text-align:center;
-  min-height:100vh;
 }
 
 h1{
   margin:20px 0 5px;
-  font-size:32px;
 }
 
-.subtitle{
-  opacity:.8;
-  margin-bottom:15px;
-}
-
-#stats{
-  display:flex;
-  justify-content:center;
-  gap:12px;
-  flex-wrap:wrap;
-  margin:10px;
-}
-
-.stat{
-  background:rgba(255,255,255,.12);
-  padding:10px 18px;
-  border-radius:15px;
-}
-
-#message{
-  min-height:25px;
-  margin:10px;
-  font-weight:bold;
+#info{
+  font-size:20px;
+  margin:15px;
 }
 
 #board{
-  width:min(92vw,430px);
-  margin:15px auto;
+  width:90vw;
+  max-width:400px;
+  margin:20px auto;
   display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:8px;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
 }
 
 .cell{
-  aspect-ratio:1;
+  height:75px;
   border:0;
-  border-radius:14px;
-  background:#3d4d78;
-  box-shadow:0 5px 10px rgba(0,0,0,.25);
-  cursor:pointer;
-  transition:.15s;
+  border-radius:15px;
+  background:#475569;
 }
 
-.cell:active{
-  transform:scale(.92);
-}
-
-.cell.path{
-  background:#ffd166;
+.cell.show{
+  background:#facc15;
 }
 
 .cell.correct{
-  background:#06d6a0;
+  background:#22c55e;
 }
 
 .cell.wrong{
-  background:#ef476f;
+  background:#ef4444;
 }
 
 button{
+  font-size:18px;
+  font-weight:bold;
   border:0;
-  border-radius:14px;
-  padding:13px 24px;
-  margin:7px;
-  font-size:17px;
+  border-radius:12px;
+  padding:12px 22px;
+  margin:8px;
+}
+
+#start{
+  background:#facc15;
+}
+
+#message{
+  min-height:28px;
   font-weight:bold;
-  cursor:pointer;
-  background:#ffffff;
-  color:#18213f;
-}
-
-#startBtn{
-  background:#ffd166;
-}
-
-#levelText{
-  font-size:21px;
-  font-weight:bold;
-}
-
-.small{
-  opacity:.7;
-  font-size:13px;
-  margin:15px;
 }
 </style>
 </head>
@@ -116,128 +75,167 @@ button{
 
 <h1>🪄 Magic Path</h1>
 
-<div class="subtitle">
-  Remember the magic path!
-</div>
-
-<div id="stats">
-
-  <div class="stat">
-    ⭐ Level: <span id="level">1</span>
-  </div>
-
-  <div class="stat">
-    🏆 Best: <span id="best">0</span>
-  </div>
-
-</div>
-
-<div id="levelText">
-  Ready?
+<div id="info">
+⭐ Level: <span id="level">1</span>
 </div>
 
 <div id="message">
-  Press Start Game
+Press Start Game 🎮
 </div>
 
 <div id="board"></div>
 
-<button id="startBtn">
-  ▶ Start Game
-</button>
-
-<button id="restartBtn">
-  🔄 Restart
-</button>
-
-<div class="small">
-  Watch the golden path carefully, then tap the same squares.
-</div>
+<button id="start">▶ Start Game</button>
 
 <script>
 
-const board = document.getElementById("board");
-const levelEl = document.getElementById("level");
-const bestEl = document.getElementById("best");
-const message = document.getElementById("message");
-const levelText = document.getElementById("levelText");
-const startBtn = document.getElementById("startBtn");
-const restartBtn = document.getElementById("restartBtn");
+var level = 1;
+var path = [];
+var player = [];
+var playing = false;
 
-let level = 1;
-let path = [];
-let playerPath = [];
-let accepting = false;
+var board = document.getElementById("board");
+var message = document.getElementById("message");
+var levelText = document.getElementById("level");
+var startButton = document.getElementById("start");
 
-let best = Number(localStorage.getItem("magicPathBest") || 0);
-bestEl.textContent = best;
-
-function createBoard(){
+function makeBoard(){
 
   board.innerHTML = "";
 
-  for(let i=0;i<25;i++){
+  for(var i=0;i<16;i++){
 
-    const cell = document.createElement("button");
+    var cell = document.createElement("button");
 
     cell.className = "cell";
-    cell.dataset.index = i;
 
-    cell.addEventListener("click",function(){
-      tapCell(i,cell);
-    });
+    cell.setAttribute("data-id",i);
+
+    cell.onclick = function(){
+
+      chooseCell(
+        Number(this.getAttribute("data-id")),
+        this
+      );
+
+    };
 
     board.appendChild(cell);
   }
 }
 
-function randomPath(){
+function makePath(){
 
-  const needed = Math.min(3 + level, 15);
+  path = [];
 
-  let result = [];
+  var amount = Math.min(3 + level,10);
 
-  while(result.length < needed){
+  while(path.length < amount){
 
-    const n = Math.floor(Math.random()*25);
+    var number = Math.floor(Math.random()*16);
 
-    if(!result.includes(n)){
-      result.push(n);
+    if(path.indexOf(number) === -1){
+
+      path.push(number);
+
     }
   }
-
-  return result;
 }
 
-function showPath(){
+function startGame(){
 
-  accepting = false;
+  level = 1;
 
-  message.textContent = "👀 Remember the path!";
+  levelText.innerHTML = level;
 
-  path.forEach(index => {
-
-    board.children[index].classList.add("path");
-
-  });
-
-  const showTime = Math.max(900, 2200 - level*80);
-
-  setTimeout(() => {
-
-    path.forEach(index => {
-
-      board.children[index].classList.remove("path");
-
-    });
-
-    accepting = true;
-
-    message.textContent = "🧠 Now recreate the path!";
-
-  },showTime);
+  startLevel();
 }
 
-function tapCell(index,cell){
+function startLevel(){
 
-  if(!
+  player = [];
+
+  playing = false;
+
+  makeBoard();
+
+  makePath();
+
+  message.innerHTML = "👀 Remember the yellow path!";
+
+  for(var i=0;i<path.length;i++){
+
+    board.children[path[i]].classList.add("show");
+
+  }
+
+  setTimeout(function(){
+
+    for(var i=0;i<path.length;i++){
+
+      board.children[path[i]].classList.remove("show");
+
+    }
+
+    playing = true;
+
+    message.innerHTML = "🧠 Now tap the path!";
+
+  },2000);
+
+}
+
+function chooseCell(id,cell){
+
+  if(!playing){
+
+    return;
+
+  }
+
+  var position = player.length;
+
+  if(id === path[position]){
+
+    cell.classList.add("correct");
+
+    player.push(id);
+
+    if(player.length === path.length){
+
+      playing = false;
+
+      message.innerHTML = "🎉 Perfect! Next level!";
+
+      setTimeout(function(){
+
+        level++;
+
+        levelText.innerHTML = level;
+
+        startLevel();
+
+      },1000);
+
+    }
+
+  }else{
+
+    cell.classList.add("wrong");
+
+    playing = false;
+
+    message.innerHTML = "💥 Wrong! Try again.";
+
+  }
+
+}
+
+startButton.onclick = startGame;
+
+makeBoard();
+
+</script>
+
+</body>
+</html>
