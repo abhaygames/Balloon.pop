@@ -1,157 +1,243 @@
-# Balloon.pop<!DOCTYPE html>
+# Balloon.pop
+<!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Balloon Pop 🎈</title>
+<title>Magic Path</title>
 
 <style>
+*{
+  box-sizing:border-box;
+}
+
 body{
   margin:0;
   font-family:Arial,sans-serif;
-  background:linear-gradient(#bdeeff,#f8fbff);
+  background:linear-gradient(135deg,#10152f,#253b70);
+  color:white;
   text-align:center;
-  overflow:hidden;
+  min-height:100vh;
 }
 
 h1{
-  color:#246;
-  margin:18px 0 8px;
+  margin:20px 0 5px;
+  font-size:32px;
 }
 
-#info{
-  font-size:20px;
+.subtitle{
+  opacity:.8;
+  margin-bottom:15px;
+}
+
+#stats{
+  display:flex;
+  justify-content:center;
+  gap:12px;
+  flex-wrap:wrap;
+  margin:10px;
+}
+
+.stat{
+  background:rgba(255,255,255,.12);
+  padding:10px 18px;
+  border-radius:15px;
+}
+
+#message{
+  min-height:25px;
+  margin:10px;
   font-weight:bold;
-  margin-bottom:10px;
 }
 
-#game{
-  position:relative;
-  height:75vh;
-  min-height:450px;
-  overflow:hidden;
-  border-top:3px solid white;
+#board{
+  width:min(92vw,430px);
+  margin:15px auto;
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
 }
 
-.balloon{
-  position:absolute;
-  width:65px;
-  height:80px;
-  border-radius:50% 50% 45% 45%;
+.cell{
+  aspect-ratio:1;
+  border:0;
+  border-radius:14px;
+  background:#3d4d78;
+  box-shadow:0 5px 10px rgba(0,0,0,.25);
   cursor:pointer;
-  box-shadow:inset -8px -10px 15px rgba(0,0,0,.15);
-  animation:floatUp 4s linear forwards;
+  transition:.15s;
 }
 
-.balloon:after{
-  content:"";
-  position:absolute;
-  width:2px;
-  height:55px;
-  background:#555;
-  left:50%;
-  top:78px;
+.cell:active{
+  transform:scale(.92);
 }
 
-@keyframes floatUp{
-  from{bottom:-100px}
-  to{bottom:110%}
+.cell.path{
+  background:#ffd166;
+}
+
+.cell.correct{
+  background:#06d6a0;
+}
+
+.cell.wrong{
+  background:#ef476f;
 }
 
 button{
-  background:#1976d2;
-  color:white;
   border:0;
-  padding:12px 25px;
-  border-radius:12px;
+  border-radius:14px;
+  padding:13px 24px;
+  margin:7px;
   font-size:17px;
-  margin:8px;
+  font-weight:bold;
+  cursor:pointer;
+  background:#ffffff;
+  color:#18213f;
+}
+
+#startBtn{
+  background:#ffd166;
+}
+
+#levelText{
+  font-size:21px;
+  font-weight:bold;
+}
+
+.small{
+  opacity:.7;
+  font-size:13px;
+  margin:15px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🎈 Balloon Pop 🎈</h1>
+<h1>🪄 Magic Path</h1>
 
-<div id="info">
-⭐ Score: <span id="score">0</span>
+<div class="subtitle">
+  Remember the magic path!
 </div>
 
-<button onclick="startGame()">Start Game</button>
+<div id="stats">
 
-<div id="game"></div>
+  <div class="stat">
+    ⭐ Level: <span id="level">1</span>
+  </div>
+
+  <div class="stat">
+    🏆 Best: <span id="best">0</span>
+  </div>
+
+</div>
+
+<div id="levelText">
+  Ready?
+</div>
+
+<div id="message">
+  Press Start Game
+</div>
+
+<div id="board"></div>
+
+<button id="startBtn">
+  ▶ Start Game
+</button>
+
+<button id="restartBtn">
+  🔄 Restart
+</button>
+
+<div class="small">
+  Watch the golden path carefully, then tap the same squares.
+</div>
 
 <script>
 
-let score = 0;
-let gameTimer;
+const board = document.getElementById("board");
+const levelEl = document.getElementById("level");
+const bestEl = document.getElementById("best");
+const message = document.getElementById("message");
+const levelText = document.getElementById("levelText");
+const startBtn = document.getElementById("startBtn");
+const restartBtn = document.getElementById("restartBtn");
 
-const colors = [
-  "#ff4d6d",
-  "#ffbe0b",
-  "#3a86ff",
-  "#8338ec",
-  "#06d6a0"
-];
+let level = 1;
+let path = [];
+let playerPath = [];
+let accepting = false;
 
-function startGame(){
+let best = Number(localStorage.getItem("magicPathBest") || 0);
+bestEl.textContent = best;
 
-  score = 0;
-  document.getElementById("score").textContent = score;
+function createBoard(){
 
-  document.getElementById("game").innerHTML = "";
+  board.innerHTML = "";
 
-  clearInterval(gameTimer);
+  for(let i=0;i<25;i++){
 
-  gameTimer = setInterval(createBalloon,700);
+    const cell = document.createElement("button");
+
+    cell.className = "cell";
+    cell.dataset.index = i;
+
+    cell.addEventListener("click",function(){
+      tapCell(i,cell);
+    });
+
+    board.appendChild(cell);
+  }
 }
 
-function createBalloon(){
+function randomPath(){
 
-  const game = document.getElementById("game");
+  const needed = Math.min(3 + level, 15);
 
-  const balloon = document.createElement("div");
+  let result = [];
 
-  balloon.className = "balloon";
+  while(result.length < needed){
 
-  balloon.style.background =
-    colors[Math.floor(Math.random()*colors.length)];
+    const n = Math.floor(Math.random()*25);
 
-  balloon.style.left =
-    Math.random()*85 + "%";
-
-  balloon.onclick = function(){
-
-    score++;
-
-    document.getElementById("score").textContent = score;
-
-    balloon.remove();
-
-    if(score >= 20){
-
-      clearInterval(gameTimer);
-
-      setTimeout(function(){
-
-        alert("🎉 Amazing! You scored 20! 🏆");
-
-      },100);
+    if(!result.includes(n)){
+      result.push(n);
     }
-  };
+  }
 
-  game.appendChild(balloon);
-
-  setTimeout(function(){
-
-    if(balloon.parentNode){
-      balloon.remove();
-    }
-
-  },4000);
+  return result;
 }
 
-</script>
+function showPath(){
 
-</body>
-</html>
+  accepting = false;
+
+  message.textContent = "👀 Remember the path!";
+
+  path.forEach(index => {
+
+    board.children[index].classList.add("path");
+
+  });
+
+  const showTime = Math.max(900, 2200 - level*80);
+
+  setTimeout(() => {
+
+    path.forEach(index => {
+
+      board.children[index].classList.remove("path");
+
+    });
+
+    accepting = true;
+
+    message.textContent = "🧠 Now recreate the path!";
+
+  },showTime);
+}
+
+function tapCell(index,cell){
+
+  if(!
